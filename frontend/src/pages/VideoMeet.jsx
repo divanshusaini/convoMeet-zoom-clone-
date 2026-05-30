@@ -31,8 +31,8 @@ export default function VideoMeetComponent() {
 
     var socketRef = useRef();
     let socketIdRef = useRef();
-
     let localVideoref = useRef();
+    const connectedRef = useRef(false);
 
     let [videoAvailable, setVideoAvailable] = useState(true);
 
@@ -112,6 +112,8 @@ export default function VideoMeetComponent() {
                     if (localVideoref.current) {
                         localVideoref.current.srcObject = userMediaStream;
                     }
+                    setVideo(videoEnabled);
+                    setAudio(audioEnabled);
                 }
             }
         } catch (error) {
@@ -130,10 +132,8 @@ export default function VideoMeetComponent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [video, audio])
     let getMedia = () => {
-        setVideo(videoAvailable);
-        setAudio(audioAvailable);
+        connectedRef.current = true;
         connectToSocketServer();
-
     }
 
 
@@ -205,6 +205,7 @@ export default function VideoMeetComponent() {
     }
 
     let getUserMedia = () => {
+        if (!connectedRef.current) return;
         if ((video && videoAvailable) || (audio && audioAvailable)) {
             navigator.mediaDevices.getUserMedia({ video: video, audio: audio })
                 .then(getUserMediaSuccess)
