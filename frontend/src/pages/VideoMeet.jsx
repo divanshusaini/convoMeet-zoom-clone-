@@ -19,7 +19,11 @@ var connections = {};
 
 const peerConfigConnections = {
     "iceServers": [
-        { "urls": "stun:stun.l.google.com:19302" }
+        { "urls": "stun:stun.l.google.com:19302" },
+        { "urls": "stun:stun1.l.google.com:19302" },
+        { "urls": "stun:stun2.l.google.com:19302" },
+        { "urls": "stun:stun3.l.google.com:19302" },
+        { "urls": "stun:stun4.l.google.com:19302" }
     ]
 }
 
@@ -86,19 +90,17 @@ export default function VideoMeetComponent() {
             let audioEnabled = false;
 
             try {
-                await navigator.mediaDevices.getUserMedia({ video: true });
+                const s = await navigator.mediaDevices.getUserMedia({ video: true });
+                s.getTracks().forEach(t => t.stop());
                 videoEnabled = true;
-            } catch {
-                videoEnabled = false;
-            }
+            } catch { videoEnabled = false; }
             setVideoAvailable(videoEnabled);
 
             try {
-                await navigator.mediaDevices.getUserMedia({ audio: true });
+                const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+                s.getTracks().forEach(t => t.stop());
                 audioEnabled = true;
-            } catch {
-                audioEnabled = false;
-            }
+            } catch { audioEnabled = false; }
             setAudioAvailable(audioEnabled);
 
             setScreenAvailable(!!navigator.mediaDevices.getDisplayMedia);
@@ -286,37 +288,31 @@ export default function VideoMeetComponent() {
 
             socketRef.current.on('user-joined', (id, clients) => {
                 clients.forEach((socketListId) => {
+                    if (socketListId === socketIdRef.current) return;
 
                     connections[socketListId] = new RTCPeerConnection(peerConfigConnections)
-                    // Wait for their ice candidate       
+
                     connections[socketListId].onicecandidate = function (event) {
                         if (event.candidate != null) {
                             socketRef.current.emit('signal', socketListId, JSON.stringify({ 'ice': event.candidate }))
                         }
                     }
 
-                    // Wait for their video stream
                     connections[socketListId].ontrack = (event) => {
-                        let stream = event.streams[0];
+                        const stream = (event.streams && event.streams[0]) || new MediaStream([event.track]);
 
-                        let videoExists = videoRef.current.find(video => video.socketId === socketListId);
+                        let videoExists = videoRef.current.find(v => v.socketId === socketListId);
 
                         if (videoExists) {
                             setVideos(videos => {
-                                const updatedVideos = videos.map(video =>
-                                    video.socketId === socketListId ? { ...video, stream } : video
+                                const updatedVideos = videos.map(v =>
+                                    v.socketId === socketListId ? { ...v, stream } : v
                                 );
                                 videoRef.current = updatedVideos;
                                 return updatedVideos;
                             });
                         } else {
-                            let newVideo = {
-                                socketId: socketListId,
-                                stream,
-                                autoplay: true,
-                                playsinline: true
-                            };
-
+                            let newVideo = { socketId: socketListId, stream };
                             setVideos(videos => {
                                 const updatedVideos = [...videos, newVideo];
                                 videoRef.current = updatedVideos;
@@ -325,7 +321,6 @@ export default function VideoMeetComponent() {
                         }
                     };
 
-                    // Add the local video stream
                     if (window.localStream !== undefined && window.localStream !== null) {
                         window.localStream.getTracks().forEach(track => connections[socketListId].addTrack(track, window.localStream))
                     } else {
@@ -338,10 +333,6 @@ export default function VideoMeetComponent() {
                 if (id === socketIdRef.current) {
                     for (let id2 in connections) {
                         if (id2 === socketIdRef.current) continue
-
-                        try {
-                            window.localStream.getTracks().forEach(track => connections[id2].addTrack(track, window.localStream))
-                        } catch (e) { }
 
                         connections[id2].createOffer().then((description) => {
                             connections[id2].setLocalDescription(description)
@@ -512,20 +503,19 @@ export default function VideoMeetComponent() {
                         {videos.map((video) => (
                             <div key={video.socketId}>
                                 <video
-
                                     data-socket={video.socketId}
                                     ref={ref => {
                                         if (ref && video.stream) {
                                             ref.srcObject = video.stream;
+                                            ref.play().catch(e => console.log('Autoplay blocked:', e));
                                         }
                                     }}
                                     autoPlay
+                                    playsInline
                                 >
                                 </video>
                             </div>
-
                         ))}
-
                     </div>
 
                 </div>
