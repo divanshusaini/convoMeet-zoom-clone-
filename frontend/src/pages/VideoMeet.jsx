@@ -150,15 +150,24 @@ export default function VideoMeetComponent() {
         for (let id in connections) {
             if (id === socketIdRef.current) continue
 
-            window.localStream.getTracks().forEach(track => connections[id].addTrack(track, window.localStream))
-
-            connections[id].createOffer().then((description) => {
-                connections[id].setLocalDescription(description)
-                    .then(() => {
-                        socketRef.current.emit('signal', id, JSON.stringify({ 'sdp': connections[id].localDescription }))
-                    })
-                    .catch(e => console.log(e))
-            })
+            const senders = connections[id].getSenders();
+            if (senders.length > 0) {
+                // Connection already established — replace tracks without renegotiation
+                stream.getTracks().forEach(newTrack => {
+                    const sender = senders.find(s => s.track && s.track.kind === newTrack.kind);
+                    if (sender) sender.replaceTrack(newTrack).catch(e => console.log(e));
+                });
+            } else {
+                // New connection — add tracks and negotiate
+                stream.getTracks().forEach(track => connections[id].addTrack(track, stream))
+                connections[id].createOffer().then((description) => {
+                    connections[id].setLocalDescription(description)
+                        .then(() => {
+                            socketRef.current.emit('signal', id, JSON.stringify({ 'sdp': connections[id].localDescription }))
+                        })
+                        .catch(e => console.log(e))
+                })
+            }
         }
 
         stream.getTracks().forEach(track => track.onended = () => {
@@ -175,15 +184,22 @@ export default function VideoMeetComponent() {
             localVideoref.current.srcObject = window.localStream
 
             for (let id in connections) {
-                window.localStream.getTracks().forEach(track => connections[id].addTrack(track, window.localStream))
-
-                connections[id].createOffer().then((description) => {
-                    connections[id].setLocalDescription(description)
-                        .then(() => {
-                            socketRef.current.emit('signal', id, JSON.stringify({ 'sdp': connections[id].localDescription }))
-                        })
-                        .catch(e => console.log(e))
-                })
+                const senders = connections[id].getSenders();
+                if (senders.length > 0) {
+                    window.localStream.getTracks().forEach(newTrack => {
+                        const sender = senders.find(s => s.track && s.track.kind === newTrack.kind);
+                        if (sender) sender.replaceTrack(newTrack).catch(e => console.log(e));
+                    });
+                } else {
+                    window.localStream.getTracks().forEach(track => connections[id].addTrack(track, window.localStream))
+                    connections[id].createOffer().then((description) => {
+                        connections[id].setLocalDescription(description)
+                            .then(() => {
+                                socketRef.current.emit('signal', id, JSON.stringify({ 'sdp': connections[id].localDescription }))
+                            })
+                            .catch(e => console.log(e))
+                    })
+                }
             }
         })
     }
