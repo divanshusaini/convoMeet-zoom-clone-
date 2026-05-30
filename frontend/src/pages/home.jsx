@@ -19,6 +19,12 @@ function HomeComponent() {
         navigate(`/${meetingCode}`)
     }
 
+    let handleCreateMeeting = async () => {
+        const code = Math.random().toString(36).substring(2, 10);
+        await addToUserHistory(code);
+        navigate(`/${code}`);
+    }
+
     return (
         <>
 
@@ -57,10 +63,12 @@ function HomeComponent() {
                         <h2>Providing Quality Video Call Just Like Quality Education</h2>
 
                         <div style={{ display: 'flex', gap: "10px" }}>
+                            <Button onClick={handleCreateMeeting} variant='contained'>New Meeting</Button>
+                        </div>
 
+                        <div style={{ display: 'flex', gap: "10px", marginTop: "10px" }}>
                             <TextField onChange={e => setMeetingCode(e.target.value)} id="outlined-basic" label="Meeting Code" variant="outlined" />
                             <Button onClick={handleJoinVideoCall} variant='contained'>Join</Button>
-
                         </div>
                     </div>
                 </div>
