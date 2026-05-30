@@ -1,3 +1,3 @@
-const server = process.env.REACT_APP_BACKEND_URL || "http://localhost:8000";
+const server = process.env.REACT_APP_BACKEND_URL || "https://convomeet-zoom-clone.onrender.com";
 
 export default server;
