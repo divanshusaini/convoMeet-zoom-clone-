@@ -65,10 +65,9 @@ export default function VideoMeetComponent() {
     // }
 
     useEffect(() => {
-        console.log("HELLO")
         getPermissions();
-
-    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     let getDislayMedia = () => {
         if (screen) {
@@ -83,32 +82,29 @@ export default function VideoMeetComponent() {
 
     const getPermissions = async () => {
         try {
-            const videoPermission = await navigator.mediaDevices.getUserMedia({ video: true });
-            if (videoPermission) {
-                setVideoAvailable(true);
-                console.log('Video permission granted');
-            } else {
-                setVideoAvailable(false);
-                console.log('Video permission denied');
-            }
+            let videoEnabled = false;
+            let audioEnabled = false;
 
-            const audioPermission = await navigator.mediaDevices.getUserMedia({ audio: true });
-            if (audioPermission) {
-                setAudioAvailable(true);
-                console.log('Audio permission granted');
-            } else {
-                setAudioAvailable(false);
-                console.log('Audio permission denied');
+            try {
+                await navigator.mediaDevices.getUserMedia({ video: true });
+                videoEnabled = true;
+            } catch {
+                videoEnabled = false;
             }
+            setVideoAvailable(videoEnabled);
 
-            if (navigator.mediaDevices.getDisplayMedia) {
-                setScreenAvailable(true);
-            } else {
-                setScreenAvailable(false);
+            try {
+                await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioEnabled = true;
+            } catch {
+                audioEnabled = false;
             }
+            setAudioAvailable(audioEnabled);
 
-            if (videoAvailable || audioAvailable) {
-                const userMediaStream = await navigator.mediaDevices.getUserMedia({ video: videoAvailable, audio: audioAvailable });
+            setScreenAvailable(!!navigator.mediaDevices.getDisplayMedia);
+
+            if (videoEnabled || audioEnabled) {
+                const userMediaStream = await navigator.mediaDevices.getUserMedia({ video: videoEnabled, audio: audioEnabled });
                 if (userMediaStream) {
                     window.localStream = userMediaStream;
                     if (localVideoref.current) {
@@ -443,12 +439,16 @@ export default function VideoMeetComponent() {
             {askForUsername === true ?
 
                 <div>
+                    <h2>Enter into Lobby</h2>
 
+                    <div style={{ marginBottom: "12px", padding: "10px", background: "#f0f0f0", borderRadius: "8px", display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span style={{ fontWeight: "bold" }}>Meeting Code:</span>
+                        <span>{window.location.pathname.replace("/", "")}</span>
+                        <Button size="small" variant="outlined" onClick={() => navigator.clipboard.writeText(window.location.href)}>Copy Link</Button>
+                    </div>
 
-                    <h2>Enter into Lobby </h2>
                     <TextField id="outlined-basic" label="Username" value={username} onChange={e => setUsername(e.target.value)} variant="outlined" />
                     <Button variant="contained" onClick={connect}>Connect</Button>
-
 
                     <div>
                         <video ref={localVideoref} autoPlay muted></video>
